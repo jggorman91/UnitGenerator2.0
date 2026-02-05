@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SEL + EF + Behavior Unit Generator</title>
+
+  <!-- Docx export libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js" integrity="sha512-3W6H3QKJb0H2B4c3q1z9ZyY5O0q6c9aYw6A9Uo4w0bQ0q7bYj8vB2zXQ1oS8r0kqfHcWm1Gq4Qqz1dZtLw0xqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" integrity="sha512-Gs2xk8N5qk7mS3bVxwS9Qe3sCwK5G7u3g0dN2m0lqk0gqXqP3f0kF0c9n8Jm5w1rVwJmYg3y8p8B4YlY3Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <style>
+    :root { --bg:#0b0c10; --card:#14161d; --text:#e8e9ee; --muted:#b6b8c2; --accent:#6aa3ff; --border:#2a2d3a; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:20px; border-bottom:1px solid var(--border); }
+    header h1 { margin:0 0 6px 0; font-size:18px; }
+    header p { margin:0; color:var(--muted); font-size:13px; }
+    main { display:grid; grid-template-columns: 420px 1fr; gap:16px; padding:16px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; }
+    .card h2 { margin:0 0 10px 0; font-size:14px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    label { display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input[type="text"], select, textarea {
+      width:100%; box-sizing:border-box; padding:10px; border-radius:10px;
+      border:1px solid var(--border); background:#0f1117; color:var(--text);
+      outline:none;
+    }
+    textarea { min-height:70px; resize:vertical; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .checks { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px; }
+    .check { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); }
+    .btns { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    button {
+      background:#0f1117; border:1px solid var(--border); color:var(--text);
+      padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:600;
+    }
+    button.primary { background:var(--accent); color:#081019; border-color:transparent; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .pill { display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:12px; }
+    .output { line-height:1.35; }
+    .output h3 { margin:14px 0 6px; font-size:16px; }
+    .output h4 { margin:12px 0 6px; font-size:14px; color:var(--muted); }
+    .output ul { margin:6px 0 10px 18px; }
+    .small { font-size:12px; color:var(--muted); }
+    details { border:1px solid var(--border); border-radius:12px; padding:10px; background:#0f1117; }
+    details summary { cursor:pointer; font-weight:700; }
+    .resource-item { border-top:1px solid var(--border); padding-top:10px; margin-top:10px; }
+    .resource-item:first-of-type { border-top:none; padding-top:0; margin-top:0; }
+
+    /* Print stylesheet */
+    @media print {
+      body { background:#fff; color:#000; }
+      header, .card.controls, .card.resources, .btns, details { display:none !important; }
+      main { display:block; padding:0; }
+      .card { border:none; padding:0; }
+      .output { font-size:11pt; }
+      .output h3 { page-break-after:avoid; }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>SEL + Executive Functioning + Behavior Unit Generator</h1>
+  <p>Single-file prototype. Uses built-in lesson bank, scenario bank, prerequisite sequencing, UDL + ASD supports toggles, and behavior-function rules.</p>
+</header>
+
+<main>
+  <section class="card controls">
+    <h2>Unit Inputs</h2>
+
+    <div class="row">
+      <div>
+        <label>Grade band</label>
+        <select id="gradeBand">
+          <option value="K-1">K-1</option>
+          <option value="2-3">2-3</option>
+          <option value="4-5">4-5</option>
+        </select>
+      </div>
+      <div>
+        <label>Unit length (lessons)</label>
+        <select id="numLessons">
+          <option value="6">6</option>
+          <option value="8" selected>8</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Target skill (pick one to start)</label>
+    <select id="targetSkill"></select>
+
+    <label>Student profile notes (optional)</label>
+    <textarea id="profileNotes" placeholder="Example: struggles with waiting, gets stuck with changes, benefits from visuals, limited peer skills..."></textarea>
+
+    <div class="row">
+      <div>
+        <label>Behavior function (optional)</label>
+        <select id="behaviorFunction">
+          <option value="">None</option>
+          <option value="escape">Escape / Avoid</option>
+          <option value="attention">Attention</option>
+          <option value="tangible">Tangible</option>
+          <option value="sensory">Sensory / Automatic</option>
+        </select>
+      </div>
+      <div>
+        <label>Setting emphasis</label>
+        <select id="setting">
+          <option value="classroom">Classroom</option>
+          <option value="smallgroup">Small Group</option>
+          <option value="recess">Recess</option>
+          <option value="cafeteria">Cafeteria</option>
+          <option value="transitions">Transitions</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="checks">
+      <div class="check"><input type="checkbox" id="toggleUDL" checked /> <span>UDL supports on</span></div>
+      <div class="check"><input type="checkbox" id="toggleASD" /> <span>ASD supports on</span></div>
+      <div class="check"><input type="checkbox" id="toggleEvidence" checked /> <span>Include evidence notes</span></div>
+      <div class="check"><input type="checkbox" id="toggleAutoSeq" checked /> <span>Auto-sequence prerequisites</span></div>
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="btnGenerate">Generate unit</button>
+      <button id="btnPrint">Print</button>
+      <button id="btnDocx" disabled>Export .docx</button>
+    </div>
+
+    <p class="small">Tip: this is designed so you can expand the banks (skills, lessons, scenarios, rules) without changing the UI.</p>
+  </section>
+
+  <section class="card">
+    <h2>Generated Unit</h2>
+    <div id="unitMeta" class="small"></div>
+    <div id="output" class="output"></div>
+
+    <details style="margin-top:14px;">
+      <summary>Show JSON (copy/paste for editing banks later)</summary>
+      <pre id="jsonOut" style="white-space:pre-wrap; font-size:12px; color:var(--muted);"></pre>
+    </details>
+  </section>
+
+  <section class="card resources" style="grid-column: 1 / -1;">
+    <h2>Built-in Resource Library (from your PDFs)</h2>
+    <p class="small">These “resource cards” are what the generator references when writing lesson methods, supports, and rationale.</p>
+    <div id="resourceList"></div>
+  </section>
+</main>
+
+<script>
+/* =========================
+   1) RESOURCE LIBRARY
+   These are distilled “rules” and “moves” pulled from your PDFs.
+   The generator can attach these notes to lessons when toggleEvidence = on.
+   ========================= */
+
+const RESOURCE_LIBRARY = [
+  {
+    id: "SAFE",
+    title: "SAFE lesson design for SEL units",
+    tags: ["unit-design", "SAFE"],
+    notes: [
+      "Sequenced: teach skills in a logical order, from simpler to more complex.",
+      "Active: use role-play, video modeling, games, and practice, not lecture.",
+      "Focused: dedicated SEL time, not just occasional check-ins.",
+      "Explicit: name the skill, teach the steps, and use visuals and clear language."
+    ],
+    cite: "SAFE described in Special Education SEL & EF and Creating Evidence-Based SEL Units."
+  },
+  {
+    id: "CASEL",
+    title: "CASEL domains to organize skills",
+    tags: ["framework", "CASEL"],
+    notes: [
+      "Self-awareness, self-management, social awareness, relationship skills, responsible decision-making.",
+      "Use domains to label unit goals and to balance unit coverage over time."
+    ],
+    cite: "CASEL wheel domains in Special Education SEL & EF."
+  },
+  {
+    id: "EBP_METHODS",
+    title: "Evidence-based methods for teaching social-behavior skills",
+    tags: ["EBP", "instruction"],
+    notes: [
+      "Direct teaching with modeling, role-play rehearsal, and feedback.",
+      "Use reinforcement and high rates of specific positive feedback.",
+      "Use visual supports and scripts to prompt skills in the moment.",
+      "Use video modeling and peer-mediated supports to build generalization."
+    ],
+    cite: "Evidence-based practices guide and social skills methods doc."
+  },
+  {
+    id: "VIDEO_MODELING",
+    title: "Video modeling basics",
+    tags: ["EBP", "video-modeling"],
+    notes: [
+      "Short video that shows the exact skill.",
+      "Watch more than once, pause to notice cues, then practice right away.",
+      "Works well for K-5, often strong for autistic learners."
+    ],
+    cite: "Video modeling section in Effective Methods for Teaching Social Skills."
+  },
+  {
+    id: "FCT",
+    title: "Functional Communication Training (replacement behaviors)",
+    tags: ["behavior", "replacement", "FCT"],
+    notes: [
+      "Teach a simple, appropriate communication response that replaces problem behavior.",
+      "Practice with prompts and reinforce the replacement behavior immediately.",
+      "Examples: request a break, request help, request wait, ask for a turn."
+    ],
+    cite: "FCT described in Evidence-Based Practices for Teaching Social-Behavior Skills."
+  }
+];
+
+/* =========================
+   2) SKILLS + PREREQS
+   You will grow this over time.
+   ========================= */
+
+const SKILLS = [
+  // Self-management / EF / behavior skills
+  { id:"identify-feelings", label:"Identify feelings (basic)", domain:"Self-Awareness", gradeBands:["K-1","2-3","4-5"] },
+  { id:"calming-strategy", label:"Use a calming strategy", domain:"Self-Management", gradeBands:["K-1","2-3","4-5"] },
+  { id:"wait-short", label:"Wait briefly (tolerate delay)", domain:"Self-Management", gradeBands:["K-1","2-3"] },
+  { id:"wait-longer", label:"Wait with coping plan", domain:"Self-Management", gradeBands:["4-5"] },
+  { id:"follow-1-step", label:"Follow 1-step directions", domain:"Self-Management", gradeBands:["K-1"] },
+  { id:"follow-2-3-step", label:"Follow multi-step directions", domain:"Self-Management", gradeBands:["2-3","4-5"] },
+
+  // Relationship / social skills
+  { id:"greeting", label:"Greeting and joining", domain:"Relationship Skills", gradeBands:["K-1","2-3","4-5"] },
+  { id:"turn-taking", label:"Turn-taking in games and work", domain:"Relationship Skills", gradeBands:["K-1","2-3","4-5"] },
+  { id:"problem-solving", label:"Social problem solving steps", domain:"Responsible Decision-Making", gradeBands:["2-3","4-5"] },
+  { id:"handle-teasing", label:"Handle teasing or conflict safely", domain:"Relationship Skills", gradeBands:["4-5"] }
+];
+
+// teach-this-before-that map
+const PREREQS = {
+  "calming-strategy": ["identify-feelings"],
+  "wait-short": ["calming-strategy"],
+  "wait-longer": ["wait-short"],
+  "follow-2-3-step": ["follow-1-step"],
+  "problem-solving": ["turn-taking", "greeting"],
+  "handle-teasing": ["problem-solving", "calming-strategy"]
+};
+
+/* =========================
+   3) LESSON BANK keyed to skill + grade band
+   Each lesson is a template (what to teach + how to teach).
+   ========================= */
+
+const LESSON_BANK = [
+  // Identify feelings
+  mkLesson("identify-feelings", "K-1", "Name feelings with faces and body clues", ["picture sort", "mirror faces", "feelings bingo"]),
+  mkLesson("identify-feelings", "2-3", "Name feelings and triggers", ["feelings map", "trigger cards", "short role-play"]),
+  mkLesson("identify-feelings", "4-5", "Name feelings + intensity (1-5)", ["mood meter", "intensity scale", "scenario discussion"]),
+
+  // Calming strategy
+  mkLesson("calming-strategy", "K-1", "Teach one calm-down routine", ["breathing practice", "calm corner routine", "teacher modeling"]),
+  mkLesson("calming-strategy", "2-3", "Pick a tool for the moment", ["toolbox chart", "practice in scenarios", "self-check"]),
+  mkLesson("calming-strategy", "4-5", "Use a coping plan before escalation", ["if-then plan", "self-talk script", "reflection log"]),
+
+  // Waiting
+  mkLesson("wait-short", "K-1", "Wait 10 to 30 seconds with support", ["wait card", "timer practice", "reinforce waiting"]),
+  mkLesson("wait-short", "2-3", "Wait 1 to 3 minutes with coping tools", ["timer + strategy", "practice in centers", "feedback"]),
+  mkLesson("wait-longer", "4-5", "Wait with plan and problem-solve", ["if-then plan", "delay choices", "peer practice"]),
+
+  // Greeting/joining
+  mkLesson("greeting", "K-1", "Say hi and join play with 1 phrase", ["model-lead-test", "puppet role-play", "play scripts"]),
+  mkLesson("greeting", "2-3", "Join a group with steps", ["step card", "role-play rotations", "recess practice plan"]),
+  mkLesson("greeting", "4-5", "Join with flexible options", ["multiple scripts", "video model", "peer feedback"]),
+
+  // Turn-taking
+  mkLesson("turn-taking", "K-1", "Take turns in a simple game", ["visual turn card", "adult coached play", "reinforce"]),
+  mkLesson("turn-taking", "2-3", "Take turns during group work roles", ["role cards", "cooperative task", "reflection"]),
+  mkLesson("turn-taking", "4-5", "Negotiate turns and handle losing", ["sportsmanship script", "problem-solving steps", "peer-led game"]),
+
+  // Problem solving
+  mkLesson("problem-solving", "2-3", "Stop-think-choose", ["3-step poster", "guided scenarios", "practice"]),
+  mkLesson("problem-solving", "4-5", "Define problem, options, consequences", ["graphic organizer", "role-play", "self-rating"])
+];
+
+function mkLesson(skillId, gradeBand, title, activities) {
+  return {
+    id: `${skillId}:${gradeBand}:${slug(title)}`,
+    skillId,
+    gradeBand,
+    title,
+    activities
+  };
+}
+
+/* =========================
+   4) SCENARIO BANK keyed to skill + grade band + setting
+   ========================= */
+
+const SCENARIO_BANK = [
+  mkScenario("calming-strategy", "K-1", "classroom", "You feel mad when work is hard. Your body feels hot."),
+  mkScenario("calming-strategy", "2-3", "transitions", "The class is lining up and it is loud. You feel stressed."),
+  mkScenario("calming-strategy", "4-5", "recess", "A game changes rules and you feel stuck."),
+
+  mkScenario("greeting", "K-1", "recess", "A kid is playing with blocks. You want to play too."),
+  mkScenario("greeting", "2-3", "cafeteria", "You sit by someone new. You want to start a talk."),
+  mkScenario("greeting", "4-5", "classroom", "Your group is already working. You need to join in."),
+
+  mkScenario("wait-short", "K-1", "classroom", "The teacher is helping someone else. You want help now."),
+  mkScenario("wait-short", "2-3", "smallgroup", "You want the marker but someone else has it."),
+  mkScenario("wait-longer", "4-5", "transitions", "You have to wait for a turn at a station.")
+];
+
+function mkScenario(skillId, gradeBand, setting, text) {
+  return { id: `${skillId}:${gradeBand}:${slug(setting)}:${Math.random().toString(16).slice(2)}`, skillId, gradeBand, setting, text };
+}
+
+/* =========================
+   5) BEHAVIOR FUNCTION RULES
+   Adds replacement behavior lessons automatically.
+   Grounded in FCT concept (teach an appropriate communication alternative).
+   ========================= */
+
+const FUNCTION_RULES = {
+  escape: [
+    { addSkillId: "request-break", label: "Request a break", script: "I need a break.", icon: "🟦" },
+    { addSkillId: "request-help", label: "Request help", script: "Help please.", icon: "🟩" }
+  ],
+  attention: [
+    { addSkillId: "get-attention", label: "Get attention appropriately", script: "Excuse me.", icon: "🟨" },
+    { addSkillId: "wait-turn", label: "Wait for attention", script: "I can wait.", icon: "🟧" }
+  ],
+  tangible: [
+    { addSkillId: "ask-turn", label: "Ask for a turn", script: "Can I have a turn?", icon: "🟪" },
+    { addSkillId: "wait-item", label: "Wait for an item", script: "I can wait.", icon: "🟧" }
+  ],
+  sensory: [
+    { addSkillId: "ask-sensory", label: "Ask for sensory tool", script: "I need my fidget.", icon: "⬛" },
+    { addSkillId: "break-body", label: "Use a body break", script: "I need a body break.", icon: "🟦" }
+  ]
+};
+
+// minimal lesson templates for replacement skills (so they can be inserted)
+const REPLACEMENT_LESSON_TEMPLATES = [
+  { key:"request-break", title:"Request a break", steps:["Notice signs of stress", "Use break card or words", "Go to break spot", "Return when ready"], activities:["practice with timer", "adult prompt then fade", "reinforce quick request"] },
+  { key:"request-help", title:"Request help", steps:["Try 1 step", "Raise hand or card", "Use help words", "Wait"], activities:["help scripts", "role-play during work", "reinforce"] },
+  { key:"wait-turn", title:"Wait with a plan", steps:["Check timer", "Use coping tool", "Keep hands safe", "Ask again later"], activities:["wait games", "delay choices", "feedback"] },
+  { key:"ask-turn", title:"Ask for a turn", steps:["Get attention", "Ask politely", "Accept answer", "Wait"], activities:["role-play", "peer practice", "visual step card"] }
+];
+
+/* =========================
+   6) UDL + ASD SUPPORTS toggles
+   These add to prompts and materials.
+   ========================= */
+
+const SUPPORTS = {
+  udl: {
+    representation: ["visuals for steps", "model + non-model examples", "simple anchor chart"],
+    actionExpression: ["choice of response mode (say, point, card)", "guided practice with prompts", "self-check rubric"],
+    engagement: ["student interest hook", "short active practice loops", "fast specific feedback"]
+  },
+  asd: {
+    supports: ["visual schedule", "clear start/finish", "first-then language", "social narrative option", "video model option"]
+  }
+};
+
+/* =========================
+   UI init
+   ========================= */
+
+const el = (id) => document.getElementById(id);
+
+function init() {
+  // skills dropdown
+  const skillSel = el("targetSkill");
+  SKILLS.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = `${s.label} (${s.domain})`;
+    skillSel.appendChild(opt);
+  });
+
+  // resource cards display
+  renderResources();
+
+  el("btnGenerate").addEventListener("click", onGenerate);
+  el("btnPrint").addEventListener("click", () => window.print());
+  el("btnDocx").addEventListener("click", onExportDocx);
+}
+init();
+
+function renderResources() {
+  const wrap = el("resourceList");
+  wrap.innerHTML = "";
+  RESOURCE_LIBRARY.forEach(r => {
+    const div = document.createElement("div");
+    div.className = "resource-item";
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+        <div>
+          <div style="font-weight:800;">${escapeHtml(r.title)}</div>
+          <div class="small">${escapeHtml(r.cite)}</div>
+        </div>
+        <div>${r.tags.map(t => `<span class="pill">${escapeHtml(t)}</span>`).join(" ")}</div>
+      </div>
+      <ul>${r.notes.map(n => `<li class="small">${escapeHtml(n)}</li>`).join("")}</ul>
+    `;
+    wrap.appendChild(div);
+  });
+}
+
+/* =========================
+   GENERATION
+   ========================= */
+
+let LAST_UNIT = null;
+
+function onGenerate() {
+  const gradeBand = el("gradeBand").value;
+  const numLessons = parseInt(el("numLessons").value, 10);
+  const targetSkillId = el("targetSkill").value;
+  const behaviorFunction = el("behaviorFunction").value.trim();
+  const setting = el("setting").value;
+  const profileNotes = el("profileNotes").value.trim();
+
+  const toggles = {
+    udl: el("toggleUDL").checked,
+    asd: el("toggleASD").checked,
+    evidence: el("toggleEvidence").checked,
+    autoSeq: el("toggleAutoSeq").checked
+  };
+
+  const unit = buildUnit({ gradeBand, numLessons, targetSkillId, behaviorFunction, setting, profileNotes, toggles });
+  LAST_UNIT = unit;
+
+  el("btnDocx").disabled = false;
+  el("unitMeta").textContent = `Grade band: ${unit.gradeBand} | Lessons: ${unit.lessons.length} | Domain focus: ${unit.primaryDomain} | Setting: ${unit.setting}`;
+
+  el("output").innerHTML = renderUnitHtml(unit);
+  el("jsonOut").textContent = JSON.stringify(unit, null, 2);
+}
+
+function buildUnit(ctx) {
+  const targetSkill = SKILLS.find(s => s.id === ctx.targetSkillId);
+  const primaryDomain = targetSkill ? targetSkill.domain : "Unknown";
+
+  // 1) Determine skill sequence
+  let skillSequence = [ctx.targetSkillId];
+
+  if (ctx.toggles.autoSeq) {
+    skillSequence = topoWithPrereqs(ctx.targetSkillId);
+  }
+
+  // 2) Apply behavior function rule inserts
+  const replacementAdds = [];
+  if (ctx.behaviorFunction && FUNCTION_RULES[ctx.behaviorFunction]) {
+    FUNCTION_RULES[ctx.behaviorFunction].forEach(r => replacementAdds.push(r.addSkillId));
+  }
+
+  // Insert replacement skills early (after prereqs if any)
+  const finalSkills = dedupe([
+    ...skillSequence,
+    ...replacementAdds
+  ]);
+
+  // 3) Build lessons from bank
+  const lessons = [];
+  for (const skillId of finalSkills) {
+    if (lessons.length >= ctx.numLessons) break;
+
+    // Replacement skill lesson generation
+    const repl = REPLACEMENT_LESSON_TEMPLATES.find(x => x.key === skillId);
+    if (repl) {
+      lessons.push(buildReplacementLesson(skillId, repl, ctx));
+      continue;
+    }
+
+    const candidates = LESSON_BANK.filter(l => l.skillId === skillId && l.gradeBand === ctx.gradeBand);
+    if (candidates.length) {
+      lessons.push(buildLessonFromTemplate(skillId, candidates[0], ctx));
+    }
+  }
+
+  // If still short, pad with more practice / generalization lessons for the target skill
+  while (lessons.length < ctx.numLessons) {
+    lessons.push(buildPracticeLesson(ctx.targetSkillId, ctx, lessons.length + 1));
+  }
+
+  return {
+    id: `unit_${Date.now()}`,
+    createdAtISO: new Date().toISOString(),
+    gradeBand: ctx.gradeBand,
+    setting: ctx.setting,
+    behaviorFunction: ctx.behaviorFunction || null,
+    targetSkillId: ctx.targetSkillId,
+    primaryDomain,
+    toggles: ctx.toggles,
+    profileNotes: ctx.profileNotes || null,
+    lessons
+  };
+}
+
+function buildLessonFromTemplate(skillId, template, ctx) {
+  const skill = SKILLS.find(s => s.id === skillId);
+  const scenario = pickScenario(skillId, ctx.gradeBand, ctx.setting);
+
+  const supports = buildSupports(ctx.toggles);
+  const methods = buildMethods(ctx.toggles);
+
+  const evidence = ctx.toggles.evidence ? pickEvidenceNotes(["SAFE","EBP_METHODS","CASEL"]) : [];
+
+  return {
+    type: "core",
+    skillId,
+    skillLabel: skill ? skill.label : skillId,
+    domain: skill ? skill.domain : "Unknown",
+    title: template.title,
+    objective: makeObjective(skill ? skill.label : skillId, ctx.gradeBand),
+    explicitSteps: suggestSteps(skillId),
+    materials: [
+      ...template.activities.map(a => `Activity: ${a}`),
+      ...supports.materials
+    ],
+    lessonFlow: [
+      "Warm-up and pre-teach",
+      "Model the skill (and a non-example)",
+      "Guided practice with prompts and feedback",
+      "Independent practice (short)",
+      "Generalization plan for the day"
+    ],
+    scenarioPractice: scenario ? scenario.text : "No scenario found yet. Add one to the scenario bank.",
+    teachingMethods: methods,
+    supports,
+    dataPlan: suggestDataPlan(skillId),
+    homeConnection: "Send home the step card or script. Ask caregivers to notice and praise the skill once.",
+    evidenceNotes: evidence
+  };
+}
+
+function buildReplacementLesson(skillId, repl, ctx) {
+  const supports = buildSupports(ctx.toggles);
+  const methods = buildMethods(ctx.toggles);
+
+  const evidence = ctx.toggles.evidence ? pickEvidenceNotes(["FCT","EBP_METHODS"]) : [];
+
+  return {
+    type: "replacement",
+    skillId,
+    skillLabel: repl.title,
+    domain: "Self-Management",
+    title: `${repl.title} (replacement behavior)`,
+    objective: `Student will use the ${repl.title.toLowerCase()} response during the day with prompts as needed.`,
+    explicitSteps: repl.steps,
+    materials: [
+      "Card or script for the replacement behavior",
+      "Reinforcer menu or token",
+      "Visual timer (optional)",
+      ...supports.materials
+    ],
+    lessonFlow: [
+      "Explain what the replacement behavior is for",
+      "Model the script and steps",
+      "Practice with easy setups, then harder setups",
+      "Reinforce immediately when used",
+      "Plan prompt fading"
+    ],
+    scenarioPractice: "Build 3 practice trials that match the function and setting (easy, medium, hard).",
+    teachingMethods: methods,
+    supports,
+    dataPlan: "Frequency count: how many times student requested appropriately vs problem behavior in the same routine.",
+    homeConnection: "Use the same words or card at home for 1 routine (homework, chores, bedtime).",
+    evidenceNotes: evidence
+  };
+}
+
+function buildPracticeLesson(skillId, ctx, lessonNum) {
+  const skill = SKILLS.find(s => s.id === skillId);
+  const supports = buildSupports(ctx.toggles);
+  const methods = buildMethods(ctx.toggles);
+  const evidence = ctx.toggles.evidence ? pickEvidenceNotes(["SAFE","EBP_METHODS"]) : [];
+
+  return {
+    type: "practice",
+    skillId,
+    skillLabel: skill ? skill.label : skillId,
+    domain: skill ? skill.domain : "Unknown",
+    title: `Practice + generalization (Lesson ${lessonNum})`,
+    objective: `Student will use ${skill ? skill.label.toLowerCase() : "the target skill"} in 2 settings with adult feedback.`,
+    explicitSteps: suggestSteps(skillId),
+    materials: ["Practice scenario cards", "Simple self-check", ...supports.materials],
+    lessonFlow: [
+      "Quick review of steps",
+      "2 short practice rounds",
+      "Generalize in a real routine (same day)",
+      "Self-check and adult feedback"
+    ],
+    scenarioPractice: "Use 2 real situations from today and practice before they happen.",
+    teachingMethods: methods,
+    supports,
+    dataPlan: suggestDataPlan(skillId),
+    homeConnection: "Caregiver gets a 1-minute script of what to praise.",
+    evidenceNotes: evidence
+  };
+}
+
+function pickScenario(skillId, gradeBand, setting) {
+  const exact = SCENARIO_BANK.filter(s => s.skillId === skillId && s.gradeBand === gradeBand && s.setting === setting);
+  if (exact.length) return exact[0];
+  const fallback = SCENARIO_BANK.filter(s => s.skillId === skillId && s.gradeBand === gradeBand);
+  return fallback[0] || null;
+}
+
+function buildSupports(toggles) {
+  const materials = [];
+  const prompts = [];
+
+  if (toggles.udl) {
+    materials.push(...SUPPORTS.udl.representation.map(x => `UDL: ${x}`));
+    materials.push(...SUPPORTS.udl.actionExpression.map(x => `UDL: ${x}`));
+    prompts.push("Offer 2 ways to respond (say it, point, card).");
+    prompts.push("Use frequent, specific feedback.");
+  }
+  if (toggles.asd) {
+    materials.push(...SUPPORTS.asd.supports.map(x => `ASD: ${x}`));
+    prompts.push("Use first-then language and clear start/finish.");
+    prompts.push("Consider a social narrative or short video model before practice.");
+  }
+
+  return { materials, prompts };
+}
+
+function buildMethods(toggles) {
+  const base = [
+    "Direct teach the skill steps",
+    "Model and role-play with feedback",
+    "Reinforce correct use in the moment",
+    "Plan generalization in a real routine"
+  ];
+  if (toggles.asd) base.push("Use visual supports and consider video modeling");
+  return base;
+}
+
+function pickEvidenceNotes(resourceIds) {
+  return RESOURCE_LIBRARY
+    .filter(r => resourceIds.includes(r.id))
+    .map(r => ({ resourceId: r.id, title: r.title, bullets: r.notes }));
+}
+
+function makeObjective(skillLabel, gradeBand) {
+  const level = gradeBand === "K-1" ? "with visual prompts" : gradeBand === "2-3" ? "with minimal prompts" : "independently in structured practice";
+  return `Student will demonstrate ${skillLabel.toLowerCase()} ${level} during practice opportunities.`;
+}
+
+function suggestSteps(skillId) {
+  const map = {
+    "identify-feelings": ["Look at face/body clues", "Name the feeling", "Rate it (small/medium/big)", "Say what helps"],
+    "calming-strategy": ["Stop", "Breathe", "Pick a tool", "Return to task"],
+    "greeting": ["Look toward person", "Say hi", "Ask to join or start", "Listen for response"],
+    "turn-taking": ["Wait", "Take your turn", "Give turn back", "Use kind words"],
+    "problem-solving": ["Stop", "Name the problem", "Think of 2 choices", "Pick safe choice", "Check result"],
+    "wait-short": ["Check timer", "Hands safe", "Use coping tool", "Ask again when timer ends"]
+  };
+  return map[skillId] || ["Name the skill", "Model the steps", "Practice", "Use it in real routines"];
+}
+
+function suggestDataPlan(skillId) {
+  const map = {
+    "identify-feelings": "Rubric 0-2: names feeling, matches face, gives 1 coping tool.",
+    "calming-strategy": "Frequency: uses strategy when prompted; duration: time to return to green.",
+    "greeting": "Frequency: initiations per day; quality: uses the script steps.",
+    "turn-taking": "Event recording: takes turn without grabbing in a game or group task.",
+    "problem-solving": "Checklist: follows steps during 1 structured scenario.",
+    "wait-short": "Latency: waits until timer ends without problem behavior."
+  };
+  return map[skillId] || "Pick one: frequency, duration, or checklist for the skill steps.";
+}
+
+/* =========================
+   PREREQ topo helper
+   ========================= */
+
+function topoWithPrereqs(skillId) {
+  const visited = new Set();
+  const out = [];
+  function dfs(id) {
+    if (visited.has(id)) return;
+    visited.add(id);
+    const prereqs = PREREQS[id] || [];
+    prereqs.forEach(dfs);
+    out.push(id);
+  }
+  dfs(skillId);
+  return out;
+}
+
+function dedupe(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const x of arr) {
+    if (!seen.has(x)) { seen.add(x); out.push(x); }
+  }
+  return out;
+}
+
+/* =========================
+   RENDER
+   ========================= */
+
+function renderUnitHtml(unit) {
+  const skill = SKILLS.find(s => s.id === unit.targetSkillId);
+  const topTitle = `${skill ? skill.label : unit.targetSkillId} Unit`;
+
+  const fnText = unit.behaviorFunction ? ` | Behavior function: ${unit.behaviorFunction}` : "";
+  const supportPills = [
+    unit.toggles.udl ? "UDL on" : "UDL off",
+    unit.toggles.asd ? "ASD supports on" : "ASD supports off",
+    unit.toggles.autoSeq ? "Auto-seq on" : "Auto-seq off",
+    unit.toggles.evidence ? "Evidence notes on" : "Evidence notes off"
+  ].map(x => `<span class="pill">${escapeHtml(x)}</span>`).join(" ");
+
+  let html = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+      <div>
+        <h3 style="margin-top:0;">${escapeHtml(topTitle)}</h3>
+        <div class="small">Domain: ${escapeHtml(unit.primaryDomain)} | Setting: ${escapeHtml(unit.setting)}${escapeHtml(fnText)}</div>
+      </div>
+      <div>${supportPills}</div>
+    </div>
+  `;
+
+  if (unit.profileNotes) {
+    html += `<h4>Student profile notes</h4><p class="small">${escapeHtml(unit.profileNotes)}</p>`;
+  }
+
+  html += `<h4>Lessons</h4>`;
+  unit.lessons.forEach((L, idx) => {
+    html += `
+      <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:12px;">
+        <div class="pill">${escapeHtml(L.type)}</div>
+        <h3 style="margin:8px 0 6px;">Lesson ${idx + 1}: ${escapeHtml(L.title)}</h3>
+        <div class="small"><b>Skill:</b> ${escapeHtml(L.skillLabel)} | <b>Domain:</b> ${escapeHtml(L.domain)}</div>
+
+        <h4>Objective</h4>
+        <div>${escapeHtml(L.objective)}</div>
+
+        <h4>Explicit steps</h4>
+        <ul>${L.explicitSteps.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+
+        <h4>Lesson flow</h4>
+        <ul>${L.lessonFlow.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+
+        <h4>Scenario practice</h4>
+        <div>${escapeHtml(L.scenarioPractice)}</div>
+
+        <h4>Materials</h4>
+        <ul>${L.materials.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+
+        <h4>Prompts and supports</h4>
+        <ul>${L.supports.prompts.map(x => `<li>${escapeHtml(x)}</li>`).join("") || "<li class='small'>None selected</li>"}</ul>
+
+        <h4>Data plan</h4>
+        <div>${escapeHtml(L.dataPlan)}</div>
+
+        <h4>Home connection</h4>
+        <div>${escapeHtml(L.homeConnection)}</div>
+    `;
+
+    if (L.evidenceNotes && L.evidenceNotes.length) {
+      html += `<h4>Evidence notes used</h4>`;
+      L.evidenceNotes.forEach(n => {
+        html += `
+          <div class="small" style="margin-bottom:6px;"><b>${escapeHtml(n.title)}</b></div>
+          <ul>${n.bullets.map(b => `<li class="small">${escapeHtml(b)}</li>`).join("")}</ul>
+        `;
+      });
+    }
+
+    html += `</div>`;
+  });
+
+  html += `<p class="small">Print uses a clean stylesheet. Docx export is basic but editable.</p>`;
+  return html;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));
+}
+
+function slug(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+}
+
+/* =========================
+   DOCX EXPORT
+   ========================= */
+
+async function onExportDocx() {
+  if (!LAST_UNIT) return;
+
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, BulletList, AlignmentType } = window.docx;
+
+  const unit = LAST_UNIT;
+  const skill = SKILLS.find(s => s.id === unit.targetSkillId);
+  const title = `${skill ? skill.label : unit.targetSkillId} Unit (${unit.gradeBand})`;
+
+  const children = [];
+
+  children.push(new Paragraph({ text: title, heading: HeadingLevel.TITLE }));
+  children.push(new Paragraph({ text: `Setting: ${unit.setting}`, spacing: { after: 120 } }));
+  if (unit.behaviorFunction) children.push(new Paragraph({ text: `Behavior function: ${unit.behaviorFunction}`, spacing: { after: 120 } }));
+  if (unit.profileNotes) {
+    children.push(new Paragraph({ text: "Student profile notes", heading: HeadingLevel.HEADING_2 }));
+    children.push(new Paragraph({ text: unit.profileNotes, spacing: { after: 200 } }));
+  }
+
+  unit.lessons.forEach((L, i) => {
+    children.push(new Paragraph({ text: `Lesson ${i + 1}: ${L.title}`, heading: HeadingLevel.HEADING_2 }));
+    children.push(new Paragraph({ text: `Skill: ${L.skillLabel} | Domain: ${L.domain}`, spacing: { after: 120 } }));
+
+    children.push(new Paragraph({ text: "Objective", heading: HeadingLevel.HEADING_3 }));
+    children.push(new Paragraph({ text: L.objective }));
+
+    children.push(new Paragraph({ text: "Explicit steps", heading: HeadingLevel.HEADING_3 }));
+    L.explicitSteps.forEach(x => children.push(new Paragraph({ text: x, bullet: { level: 0 } })));
+
+    children.push(new Paragraph({ text: "Lesson flow", heading: HeadingLevel.HEADING_3 }));
+    L.lessonFlow.forEach(x => children.push(new Paragraph({ text: x, bullet: { level: 0 } })));
+
+    children.push(new Paragraph({ text: "Scenario practice", heading: HeadingLevel.HEADING_3 }));
+    children.push(new Paragraph({ text: L.scenarioPractice }));
+
+    children.push(new Paragraph({ text: "Materials", heading: HeadingLevel.HEADING_3 }));
+    L.materials.forEach(x => children.push(new Paragraph({ text: x, bullet: { level: 0 } })));
+
+    children.push(new Paragraph({ text: "Prompts and supports", heading: HeadingLevel.HEADING_3 }));
+    if (L.supports.prompts.length) L.supports.prompts.forEach(x => children.push(new Paragraph({ text: x, bullet: { level: 0 } })));
+    else children.push(new Paragraph({ text: "None selected." }));
+
+    children.push(new Paragraph({ text: "Data plan", heading: HeadingLevel.HEADING_3 }));
+    children.push(new Paragraph({ text: L.dataPlan }));
+
+    children.push(new Paragraph({ text: "Home connection", heading: HeadingLevel.HEADING_3 }));
+    children.push(new Paragraph({ text: L.homeConnection, spacing: { after: 240 } }));
+
+    if (L.evidenceNotes && L.evidenceNotes.length) {
+      children.push(new Paragraph({ text: "Evidence notes used", heading: HeadingLevel.HEADING_3 }));
+      L.evidenceNotes.forEach(n => {
+        children.push(new Paragraph({ text: n.title, spacing: { after: 80 } }));
+        n.bullets.forEach(b => children.push(new Paragraph({ text: b, bullet: { level: 0 } })));
+      });
+    }
+  });
+
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${slug(title)}.docx`);
+}
+</script>
+
+<!-- Evidence citations (human-readable) -->
+<!-- SAFE + CASEL: :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7} -->
+<!-- SAFE expanded: :contentReference[oaicite:8]{index=8} -->
+<!-- EBP methods + FCT: :contentReference[oaicite:9]{index=9} -->
+<!-- Video modeling: :contentReference[oaicite:10]{index=10} -->
+<!-- Mindful/STOP routine example: :contentReference[oaicite:11]{index=11} -->
+</body>
+</html>
